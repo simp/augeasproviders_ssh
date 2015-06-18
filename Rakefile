@@ -1,30 +1,27 @@
-require 'rubygems'
-require 'puppetlabs_spec_helper/rake_tasks'
-require 'puppet-syntax/tasks/puppet-syntax'
-require 'puppet-lint/tasks/puppet-lint'
-require 'yard'
+#!/usr/bin/rake -T
 
-exclude_paths = [
-  "pkg/**/*",
-  "vendor/**/*",
-  "spec/**/*",
-]
+# For playing nice with mock
+File.umask(027)
 
-task :default => [:spec, :yard, :syntax, :lint]
+require 'simp/rake/pkg'
 
-desc "Run acceptance tests"
-RSpec::Core::RakeTask.new(:acceptance) do |t|
-  t.pattern = 'spec/acceptance'
+begin
+  require 'puppetlabs_spec_helper/rake_tasks'
+rescue LoadError
+  puts "== WARNING: Gem puppetlabs_spec_helper not found, spec tests cannot be run! =="
 end
 
-YARD::Rake::YardocTask.new do |t|
-  t.options = []
+# Lint Material
+begin
+  require 'puppet-lint/tasks/puppet-lint'
+
+  PuppetLint.configuration.send("disable_80chars")
+  PuppetLint.configuration.send("disable_variables_not_enclosed")
+  PuppetLint.configuration.send("disable_class_parameter_defaults")
+rescue LoadError
+  puts "== WARNING: Gem puppet-lint not found, lint tests cannot be run! =="
 end
 
-# Disable puppet-lint checks
-PuppetLint.configuration.send("disable_80chars")
-PuppetLint.configuration.send("disable_class_inherits_from_params_class")
-
-# Ignore files outside this module
-PuppetLint.configuration.ignore_paths = exclude_paths
-PuppetSyntax.exclude_paths = exclude_paths
+Simp::Rake::Pkg.new( File.dirname( __FILE__ ) ) do | t |
+  t.clean_list << "#{t.base_dir}/spec/fixtures/hieradata/hiera.yaml"
+end
