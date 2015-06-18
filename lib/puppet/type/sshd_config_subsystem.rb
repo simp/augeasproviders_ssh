@@ -8,6 +8,16 @@ Puppet::Type.newtype(:sshd_config_subsystem) do
 
   ensurable
 
+  def initialize(args)
+    super(args)
+
+    if self[:notify] then
+      self[:notify] += ['Service[sshd]']
+    else
+      self[:notify] = ['Service[sshd]']
+    end
+  end
+
   newparam(:name) do
     desc "The name of the subsystem to set."
     isnamevar
