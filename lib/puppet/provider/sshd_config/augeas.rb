@@ -3,6 +3,7 @@
 # Copyright (c) 2012 Raphaël Pinson
 # Licensed under the Apache License, Version 2.0
 
+
 Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:augeasprovider).provider(:default)) do
   desc "Uses Augeas API to update an sshd_config parameter"
 
@@ -15,31 +16,12 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
   resource_path do |resource|
     base = self.base_path(resource)
     key = resource[:key] ? resource[:key] : resource[:name]
-
     if supported?(:regexpi)
       "#{base}/*[label()=~regexp('#{key}', 'i')]"
     else
       debug "Warning: Augeas >= 1.0.0 is required for case-insensitive support in sshd_config resources"
       "#{base}/#{key}"
     end
-  end
-
-  def initialize(args)
-    super(args)
-
-    # This is the list of keys in the config file that can be defined
-    # on multiple lines legitimately.
-    @multi_keys = [
-      'AcceptEnv',
-      'AllowGroups',
-      'AllowUsers',
-      'DenyGroups',
-      'DenyUsers',
-      'HostKey',
-      'ListenAddress',
-      'MACs',
-      'Port'
-    ]
   end
 
   def self.base_path(resource)
@@ -52,7 +34,7 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
 
   def self.get_value(aug, pathx)
     aug.match(pathx).map do |vp|
-      # Augeas lens does transparent multi-node (no counter reset) so check for any int
+      # Augeas lens does transparent multi-node (no counte reset) so check for any int
       if aug.match("#{vp}/*[label()=~regexp('[0-9]*')]").empty?
         aug.get(vp)
       else
@@ -64,7 +46,7 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
   end
 
   def self.set_value(aug, base, path, label, value)
-    if label =~ /(((Allow|Deny)(Groups|Users))|AcceptEnv|MACs)/i
+    if label =~ /(((Allow|Deny)(Groups|Users))|AcceptEnv|MACs|KexAlgorithms|Ciphers)/i
 
       if aug.match("#{base}/Match").empty?
         # insert as the last line
@@ -169,10 +151,9 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
 
   def self.match_conditions(resource=nil)
     if resource[:condition]
-      conditions = Hash[*resource[:condition].split(' ').flatten(1)]
-      cond_keys = conditions.keys.length
+      cond_keys = resource[:condition].keys.length
       cond_str = "[count(Condition/*)=#{cond_keys}]"
-      conditions.each { |k,v| cond_str += "[Condition/#{k}=\"#{v}\"]" }
+      resource[:condition].each { |k,v| cond_str += "[Condition/#{k}=\"#{v}\"]" }
       cond_str
     else
       ""
@@ -184,18 +165,16 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
     not aug.match("$target/Match#{cond_str}").empty?
   end
 
-  def create
+  def create 
+    base_path = self.class.base_path(resource)
     augopen! do |aug|
       key = resource[:key] ? resource[:key] : resource[:name]
       if resource[:condition] && !self.class.match_exists?(aug, resource)
         aug.insert("$target/*[last()]", "Match", false)
-        conditions = Hash[*resource[:condition].split(' ').flatten(1)]
-        conditions.each do |k,v|
+        resource[:condition].each do |k,v|
           aug.set("$target/Match[last()]/Condition/#{k}", v)
         end
       end
-
-      base_path = self.class.base_path(resource)
       if key.downcase == 'port' and not aug.match("#{base_path}/ListenAddress").empty?
         aug.insert("#{base_path}/ListenAddress[1]", key, true)
       end
@@ -216,28 +195,8 @@ Puppet::Type.type(:sshd_config).provide(:augeas, :parent => Puppet::Type.type(:a
     end
   end
 
-  def insync?(should,is)
-    retval = ( should == is )
-
-    # If we want to preserve existing values, insync? only cares if
-    # 'is' includes 'should'.
-    #
-    # This is only valid for the keys in @multi_keys.
-    if ( @resource[:preserve] == :true ) and @multi_keys.include?(@resource[:name])
-        retval = (should - is).empty?
-    end
-
-    retval
-  end
-
   def value=(value)
     augopen! do |aug|
-      if ( @resource[:preserve] == :true ) and @multi_keys.include?(@resource[:name])
-        # Since we're preserving the existing values, we'll just
-        # gather them up and slap them all into the value array.
-        value = ( Array(value) | Array(self.class.get_value(aug, '$resource')) )
-      end
-
       key = resource[:key] ? resource[:key] : resource[:name]
       self.class.set_value(aug, self.class.base_path(resource), resource_path, key, value)
     end

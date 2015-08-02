@@ -14,16 +14,6 @@ Subsystem entries are not managed by this type. There is a specific `sshd_config
 
   ensurable
 
-  def initialize(args)
-    super(args)
-
-    if self[:notify] then
-      self[:notify] += ['Service[sshd]']
-    else
-      self[:notify] = ['Service[sshd]']
-    end
-  end
-
   newparam(:name) do
     desc "The name of the setting, or a unique string if `condition` given."
     isnamevar
@@ -36,23 +26,15 @@ given."
 
   newproperty(:value, :array_matching => :all) do
     desc "Value to change the setting to. The follow parameters take an array of values:
-
+    
 - MACs;
 - AcceptEnv;
 - AllowGroups;
 - AllowUsers;
 - DenyGroups;
-- DenyUsers;
-- HostKey;
-- ListenAddress;
-- Port.
-
+- DenyUsers.
+    
 All other parameters take a string. When passing an array to other parameters, only the first value in the array will be considered."
-
-  def insync?(is)
-    provider.insync?(@should,is)
-  end
-
   end
 
   newparam(:target) do
@@ -74,46 +56,31 @@ whitespace.  This is used if the `Match` block has multiple criteria.
 
     condition => 'Host example.net User root'
       "
-  end
 
-  newparam(:preserve) do
-    desc <<-EOM
-Preserve existing entries in the config file.
-
-Normally, this type would remove any entries that are not what we are
-setting, however there are some options that you may wish to set
-independently in various modules, the most obvious being AcceptEnv.
-
-Options that are affected by this parameter include:
-  - MACs
-  - AcceptEnv
-  - AllowGroups
-  - AllowUsers
-  - DenyGroups
-  - DenyUsers
-  - HostKey
-  - ListenAddress
-  - Port
-    EOM
-
-    newvalues(:true, :false)
-
-    defaultto :false
+    munge do |value|
+      if value.is_a? Hash
+        # TODO: test this
+        value
+      else
+        value_a = value.split
+        Hash[*value_a]
+      end
+    end
   end
 
   autorequire(:file) do
     self[:target]
   end
 
-  autorequire(:augeas) do
-    req = []
-    # resource contains all augeas types in the catalog that are managing
-    # /etc/ssh/sshd_config to prioritize settings made using this type
-    resource = catalog.resources.find_all { |r| r.is_a?(Puppet::Type.type(:augeas)) and r[:context].eql?("/file/#{self[:target]}") }
-    if not resource.empty? then
-      req << resource
+  autorequire(:sshd_config_match) do
+    if self[:condition]
+      names = []
+      self[:condition].keys.permutation.to_a.each do |p|
+        name = p.map { |k| "#{k} #{self[:condition][k]}" }.join(' ')
+        names << name
+        names << "#{name} in #{self[:target]}"
+      end
+      names
     end
-    req.flatten!
-    req
   end
 end

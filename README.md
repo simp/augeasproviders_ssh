@@ -1,6 +1,9 @@
-[![Puppet Forge](http://img.shields.io/puppetforge/v/herculesteam/augeasproviders_ssh.svg)](https://forge.puppetlabs.com/herculesteam/augeasproviders_ssh)
-[![Build Status](https://travis-ci.org/hercules-team/augeasproviders_ssh.svg?branch=master)](https://travis-ci.org/hercules-team/augeasproviders_ssh)
+[![Puppet Forge Version](http://img.shields.io/puppetforge/v/herculesteam/augeasproviders_ssh.svg)](https://forge.puppetlabs.com/herculesteam/augeasproviders_ssh)
+[![Puppet Forge Downloads](http://img.shields.io/puppetforge/dt/herculesteam/augeasproviders_ssh.svg)](https://forge.puppetlabs.com/herculesteam/augeasproviders_ssh)
+[![Puppet Forge Endorsement](https://img.shields.io/puppetforge/e/herculesteam/augeasproviders_ssh.svg)](https://forge.puppetlabs.com/herculesteam/augeasproviders_ssh)
+[![Build Status](https://img.shields.io/travis/hercules-team/augeasproviders_ssh/master.svg)](https://travis-ci.org/hercules-team/augeasproviders_ssh)
 [![Coverage Status](https://img.shields.io/coveralls/hercules-team/augeasproviders_ssh.svg)](https://coveralls.io/r/hercules-team/augeasproviders_ssh)
+[![Gemnasium](https://img.shields.io/gemnasium/hercules-team/augeasproviders_ssh.svg)](https://gemnasium.com/hercules-team/augeasproviders_ssh)
 
 
 # ssh: type/provider for ssh files for Puppet
@@ -53,7 +56,9 @@ case-insensitive keys     | no      | **yes** | **yes** | **yes** |
 **PROVIDERS**             |
 ssh\_config               | **yes** | **yes** | **yes** | **yes** |
 sshd\_config              | **yes** | **yes** | **yes** | **yes** |
+sshd\_config\_match       | **yes** | **yes** | **yes** | **yes** |
 sshd\_config\_subsystem   | **yes** | **yes** | **yes** | **yes** |
+sshkey                    | **yes** | **yes** | **yes** | **yes** |
 
 ## Documentation and examples
 
@@ -189,6 +194,39 @@ Type documentation can be generated with `puppet doc -r type` or viewed on the
       target => "/etc/ssh/another_sshd_config",
     }
 
+### sshd_config_match provider
+
+#### manage entry
+
+    sshd_config_match { "Host *.example.net":
+      ensure => present,
+    }
+
+#### manage entry with position
+
+    sshd_config_match { "Host *.example.net":
+      ensure   => present,
+      position => "before first match",
+    }
+
+    sshd_config_match { "User foo":
+      ensure   => present,
+      position => "after Host *.example.net",
+    }
+
+#### delete entry
+
+    sshd_config_match { "User foo Host *.example.net":
+      ensure => absent,
+    }
+
+#### manage entry in another sshd_config location
+
+    sshd_config_match { "Host *.example.net":
+      ensure => present,
+      target => "/etc/ssh/another_sshd_config",
+    }
+
 ### sshd_config_subsystem provider
 
 #### manage entry
@@ -210,6 +248,58 @@ Type documentation can be generated with `puppet doc -r type` or viewed on the
       ensure  => present,
       command => "/usr/lib/openssh/sftp-server",
       target  => "/etc/ssh/another_sshd_config",
+    }
+
+### sshkey provider
+
+#### manage entry
+
+    sshkey { "foo.example.com":
+      ensure  => present,
+      type    => "ssh-rsa",
+      key     => "AAADEADMEAT",
+    }
+
+#### manage entry with aliases
+
+    sshkey { "foo.example.com":
+      ensure       => present,
+      type         => "ssh-rsa",
+      key          => "AAADEADMEAT",
+      host_aliases => [ 'foo', '192.168.0.1' ],
+    }
+
+#### manage hashed entry
+
+    sshkey { "foo.example.com":
+      ensure        => present,
+      type          => "ssh-rsa",
+      key           => "AAADEADMEAT",
+      hash_hostname => true,
+    }
+
+#### hash existing entry
+
+    sshkey { "foo.example.com":
+      ensure        => hashed,
+      type          => "ssh-rsa",
+      key           => "AAADEADMEAT",
+      hash_hostname => true,
+    }
+
+#### delete entry
+
+    sshkey { "foo.example.com":
+      ensure => absent,
+    }
+
+#### manage entry in another ssh_known_hosts location
+
+    sshkey { "foo.example.com":
+      ensure  => present,
+      type    => "ssh-rsa",
+      key     => "AAADEADMEAT",
+      target  => "/root/.ssh/known_hosts",
     }
 
 ## Issues

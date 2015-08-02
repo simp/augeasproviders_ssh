@@ -2,7 +2,7 @@
 
 Summary: SSH Augeas-based providers for Puppet
 Name: pupmod-augeasproviders_ssh
-Version: 2.0.1
+Version: 2.5.0
 Release: 0
 License: Apache License, 2.0
 Group: Applications/System
@@ -50,5 +50,10 @@ mkdir -p %{buildroot}/%{prefix}/%{mod_name}
 # Post uninstall stuff
 
 %changelog
+* Sat Aug 01 2015 Trevor Vaughan <tvaughan@onyxpoint.com> - 2.5.0-0
+- Updated to the latest %{mod_name}
+- Reverted all of the patches that we needed to make since they appear to have
+  fixed the issues that we found.
+
 * Wed Feb 18 2015 Trevor Vaughan <tvaughan@onyxpoint.com> - 2.0.1-0
 - First release of %{mod_name} from Team Hercules
