@@ -1,46 +1,51 @@
-source 'https://rubygems.org'
+# ------------------------------------------------------------------------------
+# Environment variables:
+#   SIMP_GEM_SERVERS | a space/comma delimited list of rubygem servers
+#   PUPPET_VERSION   | specifies the version of the puppet gem to load
+# ------------------------------------------------------------------------------
+# NOTE: SIMP Puppet rake tasks support ruby 2.0 and ruby 2.1
+# ------------------------------------------------------------------------------
+puppetversion = ENV.key?('PUPPET_VERSION') ? "#{ENV['PUPPET_VERSION']}" : '~>3'
+gem_sources   = ENV.key?('SIMP_GEM_SERVERS') ? ENV['SIMP_GEM_SERVERS'].split(/[, ]+/) : ['https://rubygems.org']
 
-if ENV.key?('PUPPET')
-  puppetversion = "~> #{ENV['PUPPET']}"
-else
-  puppetversion = ['>= 2.7']
-end
-gem 'puppet', puppetversion
+gem_sources.each { |gem_source| source gem_source }
 
-if ENV.key?('RUBY_AUGEAS')
-  if ENV['RUBY_AUGEAS'] == '0.3.0'
-    # pre-0.4.1 versions aren't available on rubygems
-    rbaugversion = {:git => 'git://github.com/domcleal/ruby-augeas.git', :branch => '0.3.0-gem'}
-  else
-    rbaugversion = "~> #{ENV['RUBY_AUGEAS']}"
+group :test do
+  gem "rake"
+  gem 'puppet', puppetversion
+  gem "rspec", '< 3.2.0'
+  gem "rspec-puppet"
+  gem "hiera-puppet-helper"
+  gem "puppetlabs_spec_helper"
+  gem "metadata-json-lint"
+  gem "simp-rspec-puppet-facts", "~> 1.3"
+
+
+  # simp-rake-helpers does not suport puppet 2.7.X
+  if "#{ENV['PUPPET_VERSION']}".scan(/\d+/).first != '2' &&
+      # simp-rake-helpers and ruby 1.8.7 bomb Travis tests
+      # TODO: fix upstream deps (parallel in simp-rake-helpers)
+      RUBY_VERSION.sub(/\.\d+$/,'') != '1.8'
+    gem 'simp-rake-helpers'
   end
-else
-  rbaugversion = ['~> 0.3']
 end
-gem 'ruby-augeas', rbaugversion
-gem 'simp-rake-helpers'
 
-group :development, :unit_tests do
-  gem 'rake',                                              :require => false
-  gem 'rspec', '< 3.2',                                    :require => false if RUBY_VERSION =~ /^1\.8/
-  gem 'rspec-puppet',                                      :require => false
-  gem 'puppetlabs_spec_helper',                            :require => false
-  gem 'metadata-json-lint',                                :require => false
-  gem 'puppet-lint',                                       :require => false
-  gem 'puppet-lint-unquoted_string-check',                 :require => false
-  gem 'puppet-lint-empty_string-check',                    :require => false
-  gem 'puppet-lint-spaceship_operator_without_tag-check',  :require => false
-  gem 'puppet-lint-variable_contains_upcase',              :require => false
-  gem 'puppet-lint-absolute_classname-check',              :require => false
-  gem 'puppet-lint-undef_in_function-check',               :require => false
-  gem 'puppet-lint-leading_zero-check',                    :require => false
-  gem 'puppet-lint-trailing_comma-check',                  :require => false
-  gem 'puppet-lint-file_ensure-check',                     :require => false
-  gem 'puppet-lint-version_comparison-check',              :require => false
-  gem 'rspec-puppet-facts',                                :require => false
+group :development do
+  gem "travis"
+  gem "travis-lint"
+  gem "travish"
+  gem "puppet-blacksmith"
+  gem "guard-rake"
+  gem 'pry'
+  gem 'pry-doc'
 
-  gem 'coveralls',                                         :require => false unless RUBY_VERSION =~ /^1\.8/
-  gem 'simplecov', '~> 0.7.0',                             :require => false
-  gem 'yard',                                              :require => false
-  gem 'redcarpet', '~> 2.0',                               :require => false
+  # `listen` is a dependency of `guard`
+  # from `listen` 3.1+, `ruby_dep` requires Ruby version >= 2.2.3, ~> 2.2
+  gem 'listen', '~> 3.0.6'
+end
+
+group :system_tests do
+  gem 'beaker'
+  gem 'beaker-rspec'
+  gem 'simp-beaker-helpers', '>= 1.0.5'
 end
